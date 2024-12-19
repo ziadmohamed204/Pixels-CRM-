@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM System</title>
+    <style>
+        /* Existing styles remain unchanged */
+        body {
+            background-color: #14171A;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background-color: #1F2428;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #282C34;
+            color: white;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #1F2428;
+        }
+
+        .delete-btn, .edit-btn, .view-feedback-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-btn {
+            background-color: #ff0000;
+        }
+
+        .popup, .feedback-popup, .delete-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1F2428;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 9999;
+        }
+
+        .popup button, .feedback-popup button, .delete-popup button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-popup .cancel-btn {
+            background-color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pixels CRM</h1>
+
+    <form id="crmForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="phone">Phone Number:</label>
+        <input type="tel" id="phone" name="phone" required>
+
+        <label for="feedback">Feedback:</label>
+        <textarea id="feedback" name="feedback" required></textarea>
+
+        <button type="submit">Add Client</button>
+    </form>
+
+    <button id="exportToExcel" style="margin-bottom: 20px;">Export to Excel</button>
+
+    <table id="clientTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone Number</th>
+                <th>Feedback</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="clientTableBody"></tbody>
+    </table>
+
+    <div id="popup" class="popup">
+        <p>Data saved successfully!</p>
+        <button id="closePopup">Close</button>
+    </div>
+
+    <div id="feedbackPopup" class="feedback-popup">
+        <p id="feedbackContent"></p>
+        <button id="closeFeedbackPopup">Close</button>
+    </div>
+
+    <div id="deletePopup" class="delete-popup">
+        <p>Are you sure you want to delete this record?</p>
+        <button id="confirmDelete">Yes</button>
+        <button id="cancelDelete" class="cancel-btn">No</button>
+    </div>
+
+    <script>
+        const form = document.getElementById('crmForm');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const feedbackInput = document.getElementById('feedback');
+        const clientTableBody = document.getElementById('clientTableBody');
+        const popup = document.getElementById('popup');
+        const feedbackPopup = document.getElementById('feedbackPopup');
+        const feedbackContent = document.getElementById('feedbackContent');
+        const deletePopup = document.getElementById('deletePopup');
+        let clients = JSON.parse(localStorage.getItem('clients')) || [];
+        let clientToDelete = null;
+
+        function renderClients() {
+            clientTableBody.innerHTML = '';
+            clients.forEach((client, index) => {
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${client.name}</td>
+                    <td>${client.phone}</td>
+                    <td>${client.feedback}</td>
+                    <td>
+                        <button class="edit-btn" data-index="${index}">Edit</button>
+                        <button class="delete-btn" data-index="${index}">Delete</button>
+                        <button class="view-feedback-btn" data-index="${index}">View Feedback</button>
+                    </td>
+                `;
+                clientTableBody.appendChild(newRow);
+
+                newRow.querySelector('.edit-btn').addEventListener('click', () => editClient(index));
+                newRow.querySelector('.delete-btn').addEventListener('click', () => confirmDelete(index));
+                newRow.querySelector('.view-feedback-btn').addEventListener('click', () => viewFeedback(index));
+            });
+        }
+
+        function saveClients() {
+            localStorage.setItem('clients', JSON.stringify(clients));
+        }
+
+        function showPopup() {
+            popup.style.display = 'block';
+        }
+
+        function hidePopup() {
+            popup.style.display = 'none';
+        }
+
+        function confirmDelete(index) {
+            clientToDelete = index;
+            deletePopup.style.display = 'block';
+        }
+
+        function hideDeletePopup() {
+            deletePopup.style.display = 'none';
+        }
+
+        function viewFeedback(index) {
+            const client = clients[index];
+            feedbackContent.textContent = client.feedback;
+            feedbackPopup.style.display = 'block';
+        }
+
+        function hideFeedbackPopup() {
+            feedbackPopup.style.display = 'none';
+        }
+
+        function editClient(index) {
+            const client = clients[index];
+            nameInput.value = client.name;
+            phoneInput.value = client.phone;
+            feedbackInput.value = client.feedback;
+
+            clients.splice(index, 1);
+            saveClients();
+            renderClients();
+        }
+
+        document.getElementById('closePopup').addEventListener('click', hidePopup);
+        document.getElementById('closeFeedbackPopup').addEventListener('click', hideFeedbackPopup);
+
+        document.getElementById('confirmDelete').addEventListener('click', () => {
+            if (clientToDelete !== null) {
+                clients.splice(clientToDelete, 1);
+                saveClients();
+                renderClients();
+                hideDeletePopup();
+            }
+        });
+
+        document.getElementById('cancelDelete').addEventListener('click', hideDeletePopup);
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const client = {
+                name: nameInput.value,
+                phone: phoneInput.value,
+                feedback: feedbackInput.value,
+            };
+
+            clients.push(client);
+            saveClients();
+            renderClients();
+
+            nameInput.value = '';
+            phoneInput.value = '';
+            feedbackInput.value = '';
+
+            showPopup();
+        });
+
+        document.getElementById('exportToExcel').addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Name,Phone Number,Feedback\n";
+
+            clients.forEach(client => {
+                csvContent += `${client.name},${client.phone},${client.feedback}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'clients.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Initial render
+        renderClients();
+    </script>
+
+    <h5>Developed By Ziad El Warraqi</h5>
+</body>
+</html>
